@@ -1,40 +1,58 @@
-import os
-from datetime import datetime
 
-from flask import Flask, abort, request
 
-# https://github.com/line/line-bot-sdk-python
-from linebot import LineBotApi, WebhookHandler
-from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage
+import configparser
+
+import random
 
 app = Flask(__name__)
 
-line_bot_api = LineBotApi(os.environ.get("CHANNEL_ACCESS_TOKEN"))
-handler = WebhookHandler(os.environ.get("CHANNEL_SECRET"))
+# LINE 聊天機器人的基本資料
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+line_bot_api = LineBotApi(config.get('line-bot', 'channel_access_token'))
+handler = WebhookHandler(config.get('line-bot', 'channel_secret'))
 
 
-@app.route("/", methods=["GET", "POST"])
+# 接收 LINE 的資訊
+@app.route("/callback", methods=['POST'])
 def callback():
+    signature = request.headers['X-Line-Signature']
 
-    if request.method == "GET":
-        return "Hello Heroku"
-    if request.method == "POST":
-        signature = request.headers["X-Line-Signature"]
-        body = request.get_data(as_text=True)
+    body = request.get_data(as_text=True)
+    app.logger.info("Request body: " + body)
 
-        try:
-            handler.handle(body, signature)
-        except InvalidSignatureError:
-            abort(400)
+    try:
+        print(body, signature)
+        handler.handle(body, signature)
 
-        return "OK"
+    except InvalidSignatureError:
+        abort(400)
+
+    return 'OK'
+
+# 學你說話
 
 
 @handler.add(MessageEvent, message=TextMessage)
-def handle_message(event):
-    get_message = event.message.text
+def pretty_echo(event):
 
-    # Send To Line
-    reply = TextSendMessage(text=f"{get_message}")
-    line_bot_api.reply_message(event.reply_token, reply)
+    if event.source.user_id != "Udeadbeefdeadbeefdeadbeefdeadbeef":
+
+        # Phoebe 愛唱歌
+        pretty_note = '♫♪♬'
+        pretty_text = ''
+
+        for i in event.message.text:
+
+            pretty_text += i
+            pretty_text += random.choice(pretty_note)
+
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=pretty_text)
+        )
+
+
+if __name__ == "__main__":
+    app.run()
