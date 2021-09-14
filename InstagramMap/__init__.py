@@ -1,10 +1,19 @@
 from __future__ import unicode_literals
-import os
-from flask import Flask, request, abort
+
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 from linebot import LineBotApi, WebhookHandler
-from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage
+from flask_migrate import Migrate
+
 from InstagramMap.config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
+db  =  SQLAlchemy(app)
+# migrate = Migrate(app,db)
+cfg = Config()
+line_bot_api = LineBotApi(cfg.channel_access_token)
+handler = WebhookHandler(cfg.channel_secret)
+
+
+from InstagramMap import routes
